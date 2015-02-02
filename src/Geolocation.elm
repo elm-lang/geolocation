@@ -42,9 +42,9 @@ type Error
     | Timeout String
 
 
-getCurrentPosition : (Position -> Promise x a) -> (Error -> Promise y b) -> Options -> Promise z ()
+getCurrentPosition : Options -> Promise Error Position
 
-watchPosition : (Position -> Promise x a) -> (Error -> Promise y b) -> Options -> Promise z Int
+watchPosition : Options -> (Position -> Promise x a) -> (Error -> Promise y b) -> Promise z Int
 
 clearWatch : Int -> Promise x ()
 
