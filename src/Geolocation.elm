@@ -1,5 +1,20 @@
-module Geolocation where
+module Geolocation
+    ( Position, Coords
+    , currentPosition
+    , watchPosition, clearWatch
+    , Options, defaultOptions
+    , Error(..)
+    ) where
 
+{-|
+
+# Current Position
+@docs currentPosition, Options, defaultOptions, Position, Coords, Error
+
+# Watch Position Over Time
+@docs watchPosition, clearWatch
+
+-}
 
 type alias Position =
     { coords : Coords
@@ -42,7 +57,7 @@ type Error
     | Timeout String
 
 
-getCurrentPosition : Options -> Promise Error Position
+currentPosition : Options -> Promise Error Position
 
 watchPosition : Options -> (Position -> Promise x a) -> (Error -> Promise y b) -> Promise z Int
 
@@ -56,8 +71,8 @@ type alias Options =
     }
 
 
-options : Options
-options =
+defaultOptions : Options
+defaultOptions =
     { enableHighAccuracy = false
     , timeout = Nothing
     , maximumAge = 0
