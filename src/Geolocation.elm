@@ -58,10 +58,18 @@ type Error
 
 
 currentPosition : Options -> Promise Error Position
+currentPosition =
+  Native.Geolocation.currentPosition
+
 
 watchPosition : Options -> (Position -> Promise x a) -> (Error -> Promise y b) -> Promise z Int
+watchPosition =
+  Native.Geolocation.watchPosition
+
 
 clearWatch : Int -> Promise x ()
+clearWatch =
+  Native.Geolocation.clearWatch
 
 
 type alias Options =
@@ -75,5 +83,5 @@ defaultOptions : Options
 defaultOptions =
     { enableHighAccuracy = false
     , timeout = Nothing
-    , maximumAge = 0
+    , maximumAge = Nothing
     }
