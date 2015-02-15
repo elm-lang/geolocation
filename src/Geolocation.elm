@@ -6,6 +6,10 @@ module Geolocation
     , Error(..)
     ) where
 
+import Native.Geolocation
+import Promise (Promise)
+import Time (Time)
+
 {-|
 
 # Current Position
@@ -81,7 +85,7 @@ type alias Options =
 
 defaultOptions : Options
 defaultOptions =
-    { enableHighAccuracy = false
+    { enableHighAccuracy = False
     , timeout = Nothing
     , maximumAge = Nothing
     }

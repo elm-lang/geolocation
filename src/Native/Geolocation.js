@@ -26,6 +26,7 @@ Elm.Native.Geolocation.make = function(localRuntime) {
             _: {},
             timestamp: rawPosition.timestamp,
             coords: {
+                _: {},
                 latitude: coords.latitude,
                 longitude: coords.longitude,
                 altitude: maybe(coords.altitude),
@@ -49,8 +50,8 @@ Elm.Native.Geolocation.make = function(localRuntime) {
     function jsOptions(options) {
         return {
             enableHighAccuracy: options.enableHighAccuracy,
-            timeout: options.timeout._0 || 0,
-            maximumAge: options.maximumAge._0 || 0
+            timeout: options.timeout._0 || Infinity,
+            maximumAge: options.maximumAge._0
         };
     }
 
