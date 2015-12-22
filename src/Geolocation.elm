@@ -1,81 +1,126 @@
 module Geolocation
-    ( Position, Coords
-    , currentPosition
-    , watchPosition, clearWatch
-    , Options, defaultOptions
+    ( Location
+    , current
+    , subscribe
+    , unsubscribe
+    , Options
+    , defaultOptions
     , Error(..)
-    ) where
+    )
+    where
 
-import Native.Geolocation
-import Promise (Promise)
-import Time (Time)
+{-| Primitive bindings to the web's [Geolocation API][geo]. You probably want
+to use something higher-level than this, like the elm-effects API for
+geolocation.
 
-{-|
+[geo]: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation
 
-# Current Position
-@docs currentPosition, Options, defaultOptions, Position, Coords, Error
+# Location
+@docs Location
 
-# Watch Position Over Time
-@docs watchPosition, clearWatch
+# Requesting a Location
+@docs current, subscribe, unsubscribe
+
+# Options
+@docs Options, defaultOptions
+
+# Errors
+@docs Error
 
 -}
 
-type alias Position =
-    { coords : Coords
+
+import Native.Geolocation
+import Task exposing (Task)
+import Time exposing (Time)
+
+
+{-| All available details of the device's current location in the world.
+
+  * `latitude` &mdash; the latitude in decimal degrees.
+  * `longitude` &mdash; the longitude in decimal degrees.
+  * `accuracy` &mdash; the accuracy of the latitude and longitude, expressed in meters.
+  * `altitude` &mdash; the altitude in meters relative to sea level, if available.
+  * `altitudeAccuracy` &mdash; the accuracy of the altitude expressed in meters, if available.
+  * `speed` &mdash; the velocity of the device in meters per second, if available.
+  * `heading` &mdash; the direction in which the device is traveling, if available.
+    This value, specified in degrees, indicates how far off from heading due north
+    the device is. 0 degrees represents true north, 90 degrees is east, 270 degrees
+    is west, and everything in between. If speed is 0, heading is NaN.
+  * `timestamp` &mdash; the time that this location reading was taken in milliseconds.
+-}
+type alias Location =
+    { latitude : Float
+    , longitude : Float
+    , accuracy : Float
+    , altitude : Maybe Float
+    , altitudeAccuracy : Maybe Float
+    , speed : Maybe Float
+    , heading : Maybe Float
     , timestamp : Time
     }
 
 
-{-| Coordinate data provides as much information as possible for a given
-device.
+{-| The `current` and `subscribe` functions may fail for a variaty of reasons.
 
-  * `latitude` &mdash; the latitude in decimal degrees.
-  * `longitude` &mdash; the longitude in decimal degrees.
-  * `altitude` &mdash; the altitude in meters, relative to sea level, if the
-    implementation cannot provide the data.
-  * `accuracy` &mdash; the accuracy of the latitude and longitude properties,
-    expressed in meters.
-  * `altitudeAccuracy` &mdash; the accuracy of the altitude expressed in
-    meters, if available.
-  * `heading` &mdash; the direction in which the device is traveling, if
-    available. This value, specified in degrees, indicates how far off from
-    heading due north the device is. 0 degrees represents true north, 90
-    degrees is east, 270 degrees is west, and everything in between. If speed
-    is 0, heading is NaN.
-  * `speed` &mdash; the velocity of the device in meters per second, if available.
+    * The user may reject the request to use their location.
+    * It may be impossible to get a location.
+    * If you set a timeout in the `Options` the request may just take to long.
+
+In each case, the browser will provide a string with additional information.
 -}
-type alias Coords =
-    { latitude : Float
-    , longitude : Float
-    , altitude : Maybe Float
-    , accuracy : Float
-    , altitudeAccuracy : Maybe Float
-    , heading : Maybe Float
-    , speed : Maybe Float
-    }
-
-
 type Error
     = PermissionDenied String
-    | PositionUnavailable String
+    | LocationUnavailable String
     | Timeout String
 
 
-currentPosition : Options -> Promise Error Position
-currentPosition =
-  Native.Geolocation.currentPosition
+{-| Request the current position of the user's device. On the first request,
+the user will need to give permission to access this information. A typical
+request would look like this:
+
+    current defaultOptions
+-}
+current : Options -> Task Error Location
+current =
+  Native.Geolocation.current
 
 
-watchPosition : Options -> (Position -> Promise x a) -> (Error -> Promise y b) -> Promise z Int
-watchPosition =
-  Native.Geolocation.watchPosition
+{-| Subscribe to changes in the device's position. You provide two callbacks.
+One for when a location has been successfully reported, and another for when
+there has been some sort of problem.
+
+When you run the task to create a subscription, you will get back an integer
+that uniquely identifies this subscription. You can give that identifier to
+`unsubscribe` to stop getting updates.
+-}
+subscribe : Options -> (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
+subscribe =
+  Native.Geolocation.subscribe
 
 
-clearWatch : Int -> Promise x ()
-clearWatch =
-  Native.Geolocation.clearWatch
+{-| Each subscription is uniquely identified by an integer. You can cancel a
+subscription by giving that integer to `unsubscribe`.
+-}
+unsubscribe : Int -> Task x ()
+unsubscribe =
+  Native.Geolocation.unsubscribe
 
 
+{-| There are a couple options you can mess with when requesting location data.
+
+    * `enableHighAccuracy` &mdash; When enabled, the device will attempt to provide
+      a more accurate location. This can result in slower response times or
+      increased power consumption (with a GPS chip on a mobile device for example).
+      When disabled, the device can take the liberty to save resources by responding
+      more quickly and/or using less power.
+    * `timeout` &mdash; Requesting a location can take time, so you have the option
+      to provide an upper bound in milliseconds on that wait.
+    * `maximumAge` &mdash; This API can return cached locations. If this is set
+      to `Just 400` you may get cached locations as long as they were read in the
+      last 400 milliseconds. If this is `Nothing` then the device must attempt
+      to retrieve the current location every time.
+-}
 type alias Options =
     { enableHighAccuracy : Bool
     , timeout : Maybe Int
@@ -83,6 +128,15 @@ type alias Options =
     }
 
 
+{-| The options you will want in 99% of cases. This will get you faster
+results, less battery drain, no surprise failures due to timeouts, and no
+surprising cached results.
+
+    { enableHighAccuracy = False
+    , timeout = Nothing
+    , maximumAge = Nothing
+    }
+-}
 defaultOptions : Options
 defaultOptions =
     { enableHighAccuracy = False

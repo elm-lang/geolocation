@@ -9,94 +9,95 @@ Elm.Native.Geolocation.make = function(localRuntime) {
     }
 
     var Maybe = Elm.Maybe.make(localRuntime);
-    var Promise = Elm.Native.Promise.make(localRuntime);
+    var Task = Elm.Native.Task.make(localRuntime);
 
 
     // JS values to Elm values
 
-    function maybe(value) {
-        return value === null
-            ? Maybe.Nothing
-            : Maybe.Just(value);
+    function maybe(value)
+    {
+        return value === null ? Maybe.Nothing : Maybe.Just(value);
     }
 
-    function elmPosition(rawPosition) {
+    function elmPosition(rawPosition)
+    {
         var coords = rawPosition.coords;
         return {
-            _: {},
-            timestamp: rawPosition.timestamp,
-            coords: {
-                _: {},
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-                altitude: maybe(coords.altitude),
-                accuracy: coords.accuracy,
-                altitudeAccuracy: maybe(coords.altitudeAccuracy),
-                heading: maybe(coords.heading),
-                speed: maybe(coords.speed)
-            }
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            altitude: maybe(coords.altitude),
+            accuracy: coords.accuracy,
+            altitudeAccuracy: maybe(coords.altitudeAccuracy),
+            heading: maybe(coords.heading),
+            speed: maybe(coords.speed),
+            timestamp: rawPosition.timestamp
         };
     }
 
     var errorTypes = ['PermissionDenied', 'PositionUnavailable', 'Timeout'];
 
-    function elmError(rawError) {
+    function elmError(rawError)
+    {
         return {
             ctor: errorTypes[rawError.code - 1],
             _0: rawError.message
         };
     }
 
-    function jsOptions(options) {
+    function jsOptions(options)
+    {
         return {
             enableHighAccuracy: options.enableHighAccuracy,
             timeout: options.timeout._0 || Infinity,
-            maximumAge: options.maximumAge._0
+            maximumAge: options.maximumAge._0 || 0
         };
     }
 
 
     // actually do geolocation stuff
 
-    function currentPosition(options) {
-        return Promise.asyncFunction(function(callback) {
-            function onSuccess(rawPosition) {
-                callback(Promise.succeed(elmPosition(rawPosition)));
+    function current(options)
+    {
+        return Task.asyncFunction(function(callback) {
+            function onSuccess(rawPosition)
+            {
+                callback(Task.succeed(elmPosition(rawPosition)));
             }
-            function onError(rawError) {
-                callback(Promise.fail(elmError(rawError)));
+            function onError(rawError)
+            {
+                callback(Task.fail(elmError(rawError)));
             }
-            navigator.geolocation.getCurrentPosition(
-                onSuccess, onError, jsOptions(options)
-            );
+            navigator.geolocation.getCurrentPosition(onSuccess, onError, jsOptions(options));
         });
     }
 
-    function watchPosition(options, successPromise, errorPromise) {
-        return Promise.asyncFunction(function(callback) {
-            function onSuccess(rawPosition) {
-                Promise.spawn(successPromise(elmPosition(rawPosition)));
+    function subscribe(options, successTask, errorTask)
+    {
+        return Task.asyncFunction(function(callback) {
+            function onSuccess(rawPosition)
+            {
+                Task.spawn(successTask(elmPosition(rawPosition)));
             }
-            function onError(rawError) {
-                Promise.spawn(errorPromise(elmError(rawError)));
+            function onError(rawError)
+            {
+                Task.spawn(errorTask(elmError(rawError)));
             }
-            var id = navigator.geolocation.watchPosition(
-                onSuccess, onError, jsOptions(options)
-            );
-            callback(Promise.succeed(id));
+            var id = navigator.geolocation.watchPosition(onSuccess, onError, jsOptions(options));
+            callback(Task.succeed(id));
         });
     }
 
-    function clearWatch(id) {
-        return Promise.asyncFunction(function(callback) {
+    function unsubscribe(id)
+    {
+        return Task.asyncFunction(function(callback) {
             navigator.geolocation.clearWatch(id);
-            callback(Promise.succeed(Utils.Tuple0));
+            callback(Task.succeed(Utils.Tuple0));
         });
     }
 
     return localRuntime.Native.Geolocation.values = {
-        currentPosition: currentPosition,
-        watchPosition: F3(watchPosition),
-        clearWatch: clearWatch
+        current: current,
+        subscribe: F3(subscribe),
+        unsubscribe: unsubscribe
     };
 };
