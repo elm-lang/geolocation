@@ -88,11 +88,11 @@ Elm.Native.Geolocation.make = function(localRuntime) {
 		return Task.asyncFunction(function(callback) {
 			function onSuccess(rawPosition)
 			{
-				Task.spawn(successTask(elmPosition(rawPosition)));
+				Task.perform(successTask(elmPosition(rawPosition)));
 			}
 			function onError(rawError)
 			{
-				Task.spawn(errorTask(elmError(rawError)));
+				Task.perform(errorTask(elmError(rawError)));
 			}
 			var id = navigator.geolocation.watchPosition(onSuccess, onError, jsOptions(options));
 			callback(Task.succeed(id));
