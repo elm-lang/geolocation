@@ -1,6 +1,7 @@
 module Geolocation
     ( Location
-    , Movement
+    , Altitude
+    , Movement(..)
     , current
     , subscribe
     , unsubscribe
@@ -19,7 +20,7 @@ geolocation.
 [geo]: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation
 
 # Location
-@docs Location, Movement
+@docs Location, Altitude, Movement
 
 # Requesting a Location
 @docs current, subscribe, unsubscribe
@@ -28,7 +29,7 @@ geolocation.
 @docs Error
 
 # Options
-@docs currentWith, subscribeWith, Options, defaultOptions
+@docs Options, defaultOptions, currentWith, subscribeWith
 
 -}
 
@@ -43,7 +44,7 @@ import Time exposing (Time)
   * `latitude` &mdash; the latitude in decimal degrees.
   * `longitude` &mdash; the longitude in decimal degrees.
   * `accuracy` &mdash; the accuracy of the latitude and longitude, expressed in meters.
-  * `altitude` &mdash; the altitude relative to sea level and its level of accuracy (all in meters) if available.
+  * `altitude` &mdash; altitude information, if available.
   * `movement` &mdash; information about how the device is moving, if available.
   * `timestamp` &mdash; the time that this location reading was taken in milliseconds.
 -}
@@ -51,9 +52,18 @@ type alias Location =
     { latitude : Float
     , longitude : Float
     , accuracy : Float
-    , altitude : Maybe { value : Float, accuracy : Float }
+    , altitude : Maybe Altitude
     , movement : Maybe Movement
     , timestamp : Time
+    }
+
+
+{-| The altitude in meters relative to sea level is held in `value`. The `accuracy` field
+describes how accurate `value` is, also in meters.
+-}
+type alias Altitude =
+    { value : Float
+    , accuracy : Float
     }
 
 
@@ -65,7 +75,9 @@ per second and the `degreesFromNorth` in degrees.
 **Note:** The `degreesFromNorth` value goes clockwise: 0° represents true
 north, 90° is east, 180° is south, 270° is west, etc.
 -}
-type Movement = Static | Moving { speed : Float, degreesFromNorth : Float }
+type Movement
+    = Static
+    | Moving { speed : Float, degreesFromNorth : Float }
 
 
 
@@ -132,17 +144,17 @@ subscribeWith =
 
 {-| There are a couple options you can mess with when requesting location data.
 
-    * `enableHighAccuracy` &mdash; When enabled, the device will attempt to provide
-      a more accurate location. This can result in slower response times or
-      increased power consumption (with a GPS chip on a mobile device for example).
-      When disabled, the device can take the liberty to save resources by responding
-      more quickly and/or using less power.
-    * `timeout` &mdash; Requesting a location can take time, so you have the option
-      to provide an upper bound in milliseconds on that wait.
-    * `maximumAge` &mdash; This API can return cached locations. If this is set
-      to `Just 400` you may get cached locations as long as they were read in the
-      last 400 milliseconds. If this is `Nothing` then the device must attempt
-      to retrieve the current location every time.
+  * `enableHighAccuracy` &mdash; When enabled, the device will attempt to provide
+    a more accurate location. This can result in slower response times or
+    increased power consumption (with a GPS chip on a mobile device for example).
+    When disabled, the device can take the liberty to save resources by responding
+    more quickly and/or using less power.
+  * `timeout` &mdash; Requesting a location can take time, so you have the option
+    to provide an upper bound in milliseconds on that wait.
+  * `maximumAge` &mdash; This API can return cached locations. If this is set
+    to `Just 400` you may get cached locations as long as they were read in the
+    last 400 milliseconds. If this is `Nothing` then the device must attempt
+    to retrieve the current location every time.
 -}
 type alias Options =
     { enableHighAccuracy : Bool
