@@ -1,9 +1,12 @@
 module Geolocation
     ( Location
+    , Movement
     , current
     , subscribe
     , unsubscribe
     , Options
+    , currentWith
+    , subscribeWith
     , defaultOptions
     , Error(..)
     )
@@ -16,16 +19,16 @@ geolocation.
 [geo]: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation
 
 # Location
-@docs Location
+@docs Location, Movement
 
 # Requesting a Location
 @docs current, subscribe, unsubscribe
 
-# Options
-@docs Options, defaultOptions
-
 # Errors
 @docs Error
+
+# Options
+@docs currentWith, subscribeWith, Options, defaultOptions
 
 -}
 
@@ -40,25 +43,30 @@ import Time exposing (Time)
   * `latitude` &mdash; the latitude in decimal degrees.
   * `longitude` &mdash; the longitude in decimal degrees.
   * `accuracy` &mdash; the accuracy of the latitude and longitude, expressed in meters.
-  * `altitude` &mdash; the altitude in meters relative to sea level, if available.
-  * `altitudeAccuracy` &mdash; the accuracy of the altitude expressed in meters, if available.
-  * `speed` &mdash; the velocity of the device in meters per second, if available.
-  * `heading` &mdash; the direction in which the device is traveling, if available.
-    This value, specified in degrees, indicates how far off from heading due north
-    the device is. 0 degrees represents true north, 90 degrees is east, 270 degrees
-    is west, and everything in between. If speed is 0, heading is NaN.
+  * `altitude` &mdash; the altitude relative to sea level and its level of accuracy (all in meters) if available.
+  * `movement` &mdash; information about how the device is moving, if available.
   * `timestamp` &mdash; the time that this location reading was taken in milliseconds.
 -}
 type alias Location =
     { latitude : Float
     , longitude : Float
     , accuracy : Float
-    , altitude : Maybe Float
-    , altitudeAccuracy : Maybe Float
-    , speed : Maybe Float
-    , heading : Maybe Float
+    , altitude : Maybe { value : Float, accuracy : Float }
+    , movement : Maybe Movement
     , timestamp : Time
     }
+
+
+{-| Describes the motion of the device. If the device is not moving, this will
+just be `Static`. If the device is moving, you will see the `speed` in meters
+per second and the `degreesFromNorth` in degrees.
+
+
+**Note:** The `degreesFromNorth` value goes clockwise: 0° represents true
+north, 90° is east, 180° is south, 270° is west, etc.
+-}
+type Movement = Static | Moving { speed : Float, degreesFromNorth : Float }
+
 
 
 {-| The `current` and `subscribe` functions may fail for a variaty of reasons.
@@ -76,14 +84,11 @@ type Error
 
 
 {-| Request the current position of the user's device. On the first request,
-the user will need to give permission to access this information. A typical
-request would look like this:
-
-    current defaultOptions
+the user will need to give permission to access this information.
 -}
-current : Options -> Task Error Location
+current : Task Error Location
 current =
-  Native.Geolocation.current
+  currentWith defaultOptions
 
 
 {-| Subscribe to changes in the device's position. You provide two callbacks.
@@ -94,9 +99,9 @@ When you run the task to create a subscription, you will get back an integer
 that uniquely identifies this subscription. You can give that identifier to
 `unsubscribe` to stop getting updates.
 -}
-subscribe : Options -> (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
+subscribe : (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
 subscribe =
-  Native.Geolocation.subscribe
+  subscribeWith defaultOptions
 
 
 {-| Each subscription is uniquely identified by an integer. You can cancel a
@@ -105,6 +110,24 @@ subscription by giving that integer to `unsubscribe`.
 unsubscribe : Int -> Task x ()
 unsubscribe =
   Native.Geolocation.unsubscribe
+
+
+
+-- WITH OPTIONS
+
+
+{-| Same as `current` but you can customize exactly how locations are reported.
+-}
+currentWith : Options -> Task Error Location
+currentWith =
+  Native.Geolocation.current
+
+
+{-| Same as `subscribe` but you can customize exactly how locations are reported.
+-}
+subscribeWith : Options -> (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
+subscribeWith =
+  Native.Geolocation.subscribe
 
 
 {-| There are a couple options you can mess with when requesting location data.

@@ -14,22 +14,34 @@ Elm.Native.Geolocation.make = function(localRuntime) {
 
 	// JS values to Elm values
 
-	function maybe(value)
-	{
-		return value === null ? Maybe.Nothing : Maybe.Just(value);
-	}
-
 	function elmPosition(rawPosition)
 	{
 		var coords = rawPosition.coords;
+
+		var rawAltitude = coords.altitude;
+		var rawAccuracy = coords.altitudeAccuracy;
+		var altitude =
+			(rawAltitude === null || rawAccuracy === null)
+				? Maybe.Nothing
+				: Maybe.Just({ value: rawAltitude, accuracy: rawAccuracy });
+
+		var heading = coords.heading;
+		var speed = coords.speed;
+		var movement =
+			(heading === null || speed === null)
+				? Maybe.Nothing
+				: Maybe.Just(
+					speed === 0
+						? { ctor: 'Static' }
+						: { ctor: 'Moving', _0: { speed: speed, degreesFromNorth: heading } }
+				);
+
 		return {
 			latitude: coords.latitude,
 			longitude: coords.longitude,
-			altitude: maybe(coords.altitude),
 			accuracy: coords.accuracy,
-			altitudeAccuracy: maybe(coords.altitudeAccuracy),
-			heading: maybe(coords.heading),
-			speed: maybe(coords.speed),
+			altitude: altitude,
+			movement: movement,
 			timestamp: rawPosition.timestamp
 		};
 	}
