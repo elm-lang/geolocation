@@ -9,7 +9,7 @@ Elm.Native.Geolocation.make = function(localRuntime) {
 	}
 
 	var Maybe = Elm.Maybe.make(localRuntime);
-	var Task = Elm.Native.Task.make(localRuntime);
+	var Scheduler = Elm.Native.Scheduler.make(localRuntime);
 
 
 	// JS values to Elm values
@@ -70,46 +70,43 @@ Elm.Native.Geolocation.make = function(localRuntime) {
 
 	function current(options)
 	{
-		return Task.asyncFunction(function(callback) {
+		return Scheduler.nativeBinding(function(callback) {
 			function onSuccess(rawPosition)
 			{
-				callback(Task.succeed(elmPosition(rawPosition)));
+				callback(Scheduler.succeed(elmPosition(rawPosition)));
 			}
 			function onError(rawError)
 			{
-				callback(Task.fail(elmError(rawError)));
+				callback(Scheduler.fail(elmError(rawError)));
 			}
 			navigator.geolocation.getCurrentPosition(onSuccess, onError, jsOptions(options));
 		});
 	}
 
-	function subscribe(options, successTask, errorTask)
+	function report(options, process)
 	{
-		return Task.asyncFunction(function(callback) {
+		return Scheduler.nativeBinding(function(callback)
+		{
 			function onSuccess(rawPosition)
 			{
-				Task.perform(successTask(elmPosition(rawPosition)));
+				A2(Scheduler.send, process, elmPosition(rawPosition));
 			}
+
 			function onError(rawError)
 			{
-				Task.perform(errorTask(elmError(rawError)));
+				callback(Scheduler.fail(elmError(rawError)));
 			}
-			var id = navigator.geolocation.watchPosition(onSuccess, onError, jsOptions(options));
-			callback(Task.succeed(id));
-		});
-	}
 
-	function unsubscribe(id)
-	{
-		return Task.asyncFunction(function(callback) {
-			navigator.geolocation.clearWatch(id);
-			callback(Task.succeed(Utils.Tuple0));
+			var id = navigator.geolocation.watchPosition(onSuccess, onError, jsOptions(options));
+
+			return function() {
+				navigator.geolocation.clearWatch(id);
+			};
 		});
 	}
 
 	return localRuntime.Native.Geolocation.values = {
 		current: current,
-		subscribe: F3(subscribe),
-		unsubscribe: unsubscribe
+		report: F2(report)
 	};
 };

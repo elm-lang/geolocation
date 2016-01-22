@@ -3,11 +3,10 @@ module Geolocation
     , Altitude
     , Movement(..)
     , current
-    , subscribe
-    , unsubscribe
+    , spawnReporter
     , Options
     , currentWith
-    , subscribeWith
+    , spawnReporterWith
     , defaultOptions
     , Error(..)
     )
@@ -23,18 +22,19 @@ geolocation.
 @docs Location, Altitude, Movement
 
 # Requesting a Location
-@docs current, subscribe, unsubscribe
+@docs current, spawnReporter
 
 # Errors
 @docs Error
 
 # Options
-@docs Options, defaultOptions, currentWith, subscribeWith
+@docs Options, defaultOptions, currentWith, spawnReporterWith
 
 -}
 
 
 import Native.Geolocation
+import Process
 import Task exposing (Task)
 import Time exposing (Time)
 
@@ -81,7 +81,7 @@ type Movement
 
 
 
-{-| The `current` and `subscribe` functions may fail for a variaty of reasons.
+{-| The `current` and `spawnReporter` functions may fail for a variaty of reasons.
 
     * The user may reject the request to use their location.
     * It may be impossible to get a location.
@@ -103,25 +103,15 @@ current =
   currentWith defaultOptions
 
 
-{-| Subscribe to changes in the device's position. You provide two callbacks.
-One for when a location has been successfully reported, and another for when
-there has been some sort of problem.
+{-| When the device moves, send the new location to the given process.
 
-When you run the task to create a subscription, you will get back an integer
-that uniquely identifies this subscription. You can give that identifier to
-`unsubscribe` to stop getting updates.
+This will spawn a process that just manages location. If you want to stop
+getting location messages, you can use `Process.kill` to close down the
+reporter and clean up any resources it was using.
 -}
-subscribe : (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
-subscribe =
-  subscribeWith defaultOptions
-
-
-{-| Each subscription is uniquely identified by an integer. You can cancel a
-subscription by giving that integer to `unsubscribe`.
--}
-unsubscribe : Int -> Task x ()
-unsubscribe =
-  Native.Geolocation.unsubscribe
+spawnReporter : Process err Location -> Task x (Process Error Never)
+spawnReporter =
+  spawnReporterWith defaultOptions
 
 
 
@@ -135,11 +125,11 @@ currentWith =
   Native.Geolocation.current
 
 
-{-| Same as `subscribe` but you can customize exactly how locations are reported.
+{-| Same as `spawnReporter` but you can customize exactly how locations are reported.
 -}
-subscribeWith : Options -> (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
-subscribeWith =
-  Native.Geolocation.subscribe
+spawnReporterWith : Options -> Process err Location -> Task x (Process Error Never)
+spawnReporterWith options process =
+  Process.spawn (Native.Geolocation.report options process)
 
 
 {-| There are a couple options you can mess with when requesting location data.
