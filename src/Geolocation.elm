@@ -1,42 +1,49 @@
-module Geolocation
-    ( Location
-    , Altitude
-    , Movement(..)
-    , current
-    , subscribe
-    , unsubscribe
-    , Options
-    , currentWith
-    , subscribeWith
-    , defaultOptions
-    , Error(..)
-    )
-    where
+effect module Geolocation { subscription = MySub }
+  ( Location
+  , Altitude
+  , Movement(..)
+  , changes
+  , now, nowWith
+  , watch, watchWith
+  , Options, defaultOptions
+  , Error(..)
+  )
+  where
 
-{-| Primitive bindings to the web's [Geolocation API][geo]. You probably want
-to use something higher-level than this, like the elm-effects API for
-geolocation.
+{-| Find out about where a user’s device is located. [Geolocation API][geo].
 
 [geo]: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation
 
 # Location
 @docs Location, Altitude, Movement
 
-# Requesting a Location
-@docs current, subscribe, unsubscribe
+# Subscribe to Changes
+@docs changes
 
-# Errors
-@docs Error
+# Get Current Location
+@docs now, Error
 
 # Options
-@docs Options, defaultOptions, currentWith, subscribeWith
+@docs currentWith, Options, defaultOptions
+
+# Low-level Helpers
+
+There are very few excuses to use this. Any normal user should be using
+`changes` instead.
+
+@docs watch, watchWith
 
 -}
 
 
 import Native.Geolocation
+import Process
 import Task exposing (Task)
 import Time exposing (Time)
+
+
+
+-- LOCATION
 
 
 {-| All available details of the device's current location in the world.
@@ -81,7 +88,10 @@ type Movement
 
 
 
-{-| The `current` and `subscribe` functions may fail for a variaty of reasons.
+-- ERRORS
+
+
+{-| The `now` and `watch` functions may fail for a variaty of reasons.
 
     * The user may reject the request to use their location.
     * It may be impossible to get a location.
@@ -95,51 +105,65 @@ type Error
     | Timeout String
 
 
-{-| Request the current position of the user's device. On the first request,
-the user will need to give permission to access this information.
+
+-- CURRENT LOCATION
+
+
+{-| Request the location of the user’s device.
+
+On the first request, the user will need to give permission to access this
+information. This task will block until they make a choice. If they do not
+give permission, the task will result in a `PermissionDenied` error.
 -}
-current : Task Error Location
-current =
-  currentWith defaultOptions
+now : Task Error Location
+now =
+  nowWith defaultOptions
 
 
-{-| Subscribe to changes in the device's position. You provide two callbacks.
-One for when a location has been successfully reported, and another for when
-there has been some sort of problem.
-
-When you run the task to create a subscription, you will get back an integer
-that uniquely identifies this subscription. You can give that identifier to
-`unsubscribe` to stop getting updates.
+{-| Same as `now` but you can customize exactly how locations are reported.
 -}
-subscribe : (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
-subscribe =
-  subscribeWith defaultOptions
+nowWith : Options -> Task Error Location
+nowWith =
+  Native.Geolocation.now
 
 
-{-| Each subscription is uniquely identified by an integer. You can cancel a
-subscription by giving that integer to `unsubscribe`.
+
+-- SUBSCRIBE TO LOCATION CHANGES
+
+
+{-| This is a low-level API that is used to define things like `changes`.
+It is really only useful if you need to make an effect manager of your own.
+I feel this will include about 5 people ever.
+
+You provide two functions. One two take some action on movement and one to
+take some action on failure. The resulting task will just block forever,
+reporting to these two functions. If you would like to kill a `watch` task,
+do something like this:
+
+    import Process
+    import Task
+
+    killWatch =
+      Process.spawn (watch onMove onError)
+        `Task.andThen` \watchProcess ->
+
+      Process.kill watchProcess
+
 -}
-unsubscribe : Int -> Task x ()
-unsubscribe =
-  Native.Geolocation.unsubscribe
+watch : (Location -> Task Never ()) -> (Error -> Task Never ()) -> Task x Never
+watch =
+  watchWith defaultOptions
 
 
-
--- WITH OPTIONS
-
-
-{-| Same as `current` but you can customize exactly how locations are reported.
+{-| Same as `watch` but you can customize exactly how locations are reported.
 -}
-currentWith : Options -> Task Error Location
-currentWith =
-  Native.Geolocation.current
+watchWith : Options -> (Location -> Task Never ()) -> (Error -> Task Never ()) -> Task x Never
+watchWith options onMove onError =
+  Native.Geolocation.watch options onMove onError)
 
 
-{-| Same as `subscribe` but you can customize exactly how locations are reported.
--}
-subscribeWith : Options -> (Location -> Task x a) -> (Error -> Task y b) -> Task z Int
-subscribeWith =
-  Native.Geolocation.subscribe
+
+-- OPTIONS
 
 
 {-| There are a couple options you can mess with when requesting location data.
@@ -178,3 +202,71 @@ defaultOptions =
     , timeout = Nothing
     , maximumAge = Nothing
     }
+
+
+
+-- SUBSCRIPTIONS
+
+
+type MySub msg =
+  Tagger (Location -> msg)
+
+
+changes : (Location -> msg) -> Sub msg
+changes tagger =
+  subscription (Tagger tagger)
+
+
+
+-- EFFECT MANAGER
+
+
+type alias State =
+  Maybe
+    { subs : List (Location -> msg)
+    , watcher : Process.Id
+    }
+
+
+init : Task Never State
+init =
+  Task.succeed Nothing
+
+
+onEffects : Platform.Router msg Location -> List (MySub msg) -> State -> Task Never State
+onEffects router subs state =
+  case state of
+    Nothing ->
+      case subs of
+        [] ->
+          Task.succeed state
+
+        _ ->
+          watch (Platform.sendToSelf router) (\_ -> Task.succeed ())
+            `andThen` \watcher ->
+
+          Task.succeed (Just { subs = subs, watcher = watcher })
+
+    Just {subs,watcher} ->
+      case subs of
+        [] ->
+          Process.kill watcher
+            `andThen` \_ ->
+
+          Task.succeed Nothing
+
+        _ ->
+          Task.succeed (Just { subs = subs, watcher = watcher })
+
+
+onSelfMsg : Platform.Router msg Location -> Location -> State -> Task Never State
+onSelfMsg router location state =
+  case state of
+    Nothing ->
+      Task.succeed Nothing
+
+    Just {subs} ->
+      Task.sequence (List.map (\tagger -> Platform.sendToApp router (tagger location)) subs)
+        `andThen` \_ ->
+
+      Task.succeed state
