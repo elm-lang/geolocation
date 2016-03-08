@@ -1,112 +1,117 @@
-Elm.Native.Geolocation = {};
-Elm.Native.Geolocation.make = function(localRuntime) {
+//import Maybe, Native.Scheduler //
 
-	localRuntime.Native = localRuntime.Native || {};
-	localRuntime.Native.Geolocation = localRuntime.Native.Geolocation || {};
-	if (localRuntime.Native.Geolocation.values)
-	{
-		return localRuntime.Native.Geolocation.values;
-	}
-
-	var Maybe = Elm.Maybe.make(localRuntime);
-	var Scheduler = Elm.Native.Scheduler.make(localRuntime);
+var _elm_lang$geolocation$Native_Geolocation = function() {
 
 
-	// JS values to Elm values
+// LOCATIONS
 
-	function elmPosition(rawPosition)
-	{
-		var coords = rawPosition.coords;
+function toLocation(rawPosition)
+{
+	var coords = rawPosition.coords;
 
-		var rawAltitude = coords.altitude;
-		var rawAccuracy = coords.altitudeAccuracy;
-		var altitude =
-			(rawAltitude === null || rawAccuracy === null)
-				? Maybe.Nothing
-				: Maybe.Just({ value: rawAltitude, accuracy: rawAccuracy });
+	var rawAltitude = coords.altitude;
+	var rawAccuracy = coords.altitudeAccuracy;
+	var altitude =
+		(rawAltitude === null || rawAccuracy === null)
+			? Maybe.Nothing
+			: Maybe.Just({ value: rawAltitude, accuracy: rawAccuracy });
 
-		var heading = coords.heading;
-		var speed = coords.speed;
-		var movement =
-			(heading === null || speed === null)
-				? Maybe.Nothing
-				: Maybe.Just(
-					speed === 0
-						? { ctor: 'Static' }
-						: { ctor: 'Moving', _0: { speed: speed, degreesFromNorth: heading } }
-				);
+	var heading = coords.heading;
+	var speed = coords.speed;
+	var movement =
+		(heading === null || speed === null)
+			? Maybe.Nothing
+			: Maybe.Just(
+				speed === 0
+					? { ctor: 'Static' }
+					: { ctor: 'Moving', _0: { speed: speed, degreesFromNorth: heading } }
+			);
 
-		return {
-			latitude: coords.latitude,
-			longitude: coords.longitude,
-			accuracy: coords.accuracy,
-			altitude: altitude,
-			movement: movement,
-			timestamp: rawPosition.timestamp
-		};
-	}
-
-	var errorTypes = ['PermissionDenied', 'PositionUnavailable', 'Timeout'];
-
-	function elmError(rawError)
-	{
-		return {
-			ctor: errorTypes[rawError.code - 1],
-			_0: rawError.message
-		};
-	}
-
-	function jsOptions(options)
-	{
-		return {
-			enableHighAccuracy: options.enableHighAccuracy,
-			timeout: options.timeout._0 || Infinity,
-			maximumAge: options.maximumAge._0 || 0
-		};
-	}
-
-
-	// actually do geolocation stuff
-
-	function current(options)
-	{
-		return Scheduler.nativeBinding(function(callback) {
-			function onSuccess(rawPosition)
-			{
-				callback(Scheduler.succeed(elmPosition(rawPosition)));
-			}
-			function onError(rawError)
-			{
-				callback(Scheduler.fail(elmError(rawError)));
-			}
-			navigator.geolocation.getCurrentPosition(onSuccess, onError, jsOptions(options));
-		});
-	}
-
-	function report(options, process)
-	{
-		return Scheduler.nativeBinding(function(callback)
-		{
-			function onSuccess(rawPosition)
-			{
-				A2(Scheduler.send, process, elmPosition(rawPosition));
-			}
-
-			function onError(rawError)
-			{
-				callback(Scheduler.fail(elmError(rawError)));
-			}
-
-			var id = navigator.geolocation.watchPosition(onSuccess, onError, jsOptions(options));
-
-			return function() {
-				navigator.geolocation.clearWatch(id);
-			};
-		});
-	}
-
-	return localRuntime.Native.Geolocation.values = {
-		current: current,
-		report: F2(report)
+	return {
+		latitude: coords.latitude,
+		longitude: coords.longitude,
+		accuracy: coords.accuracy,
+		altitude: altitude,
+		movement: movement,
+		timestamp: rawPosition.timestamp
 	};
+}
+
+
+// ERRORS
+
+var errorTypes = ['PermissionDenied', 'PositionUnavailable', 'Timeout'];
+
+function toError(rawError)
+{
+	return {
+		ctor: errorTypes[rawError.code - 1],
+		_0: rawError.message
+	};
+}
+
+
+// OPTIONS
+
+function fromOptions(options)
+{
+	return {
+		enableHighAccuracy: options.enableHighAccuracy,
+		timeout: options.timeout._0 || Infinity,
+		maximumAge: options.maximumAge._0 || 0
+	};
+}
+
+
+// GET LOCATION
+
+function now(options)
+{
+	return _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
+	{
+		function onSuccess(rawPosition)
+		{
+			callback(_elm_lang$core$Native_Scheduler.succeed(toLocation(rawPosition)));
+		}
+
+		function onError(rawError)
+		{
+			callback(_elm_lang$core$Native_Scheduler.fail(toError(rawError)));
+		}
+
+		navigator.geolocation.getCurrentPosition(onSuccess, onError, fromOptions(options));
+	});
+}
+
+function watch(options, toSuccessTask, toErrorTask)
+{
+	return _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
+	{
+		function onSuccess(rawPosition)
+		{
+			var location = toLocation(rawPosition);
+			var task = toSuccessTask(location);
+			_elm_lang$core$Native_Scheduler.rawSpawn(task);
+		}
+
+		function onError(rawError)
+		{
+			var error = toError(rawError);
+			var task = toErrorTask(error);
+			_elm_lang$core$Native_Scheduler.rawSpawn(task);
+		}
+
+		var id = navigator.geolocation.watchPosition(onSuccess, onError, fromOptions(options));
+
+		return function() {
+			navigator.geolocation.clearWatch(id);
+		};
+	});
+}
+
+return {
+	now: now,
+	watch: F3(watch)
 };
+
+}();
