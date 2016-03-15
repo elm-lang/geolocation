@@ -13,15 +13,15 @@ function toLocation(rawPosition)
 	var rawAccuracy = coords.altitudeAccuracy;
 	var altitude =
 		(rawAltitude === null || rawAccuracy === null)
-			? Maybe.Nothing
-			: Maybe.Just({ value: rawAltitude, accuracy: rawAccuracy });
+			? _elm_lang$core$Maybe$Nothing
+			: _elm_lang$core$Maybe$Just({ value: rawAltitude, accuracy: rawAccuracy });
 
 	var heading = coords.heading;
 	var speed = coords.speed;
 	var movement =
 		(heading === null || speed === null)
-			? Maybe.Nothing
-			: Maybe.Just(
+			? _elm_lang$core$Maybe$Nothing
+			: _elm_lang$core$Maybe$Just(
 				speed === 0
 					? { ctor: 'Static' }
 					: { ctor: 'Moving', _0: { speed: speed, degreesFromNorth: heading } }
