@@ -1,4 +1,4 @@
-effect module Geolocation { subscription = MySub }
+effect module Geolocation where { subscription = MySub } exposing
   ( Location
   , Altitude
   , Movement(..)
@@ -8,7 +8,6 @@ effect module Geolocation { subscription = MySub }
   , Options, defaultOptions
   , Error(..)
   )
-  where
 
 {-| Find out about where a user’s device is located. [Geolocation API][geo].
 
@@ -24,7 +23,7 @@ effect module Geolocation { subscription = MySub }
 @docs now, Error
 
 # Options
-@docs currentWith, Options, defaultOptions
+@docs nowWith, Options, defaultOptions
 
 # Low-level Helpers
 
@@ -158,8 +157,8 @@ watch =
 {-| Same as `watch` but you can customize exactly how locations are reported.
 -}
 watchWith : Options -> (Location -> Task Never ()) -> (Error -> Task Never ()) -> Task x Never
-watchWith options onMove onError =
-  Native.Geolocation.watch options onMove onError)
+watchWith =
+  Native.Geolocation.watch
 
 
 
@@ -212,6 +211,14 @@ type MySub msg =
   Tagger (Location -> msg)
 
 
+subMap : (a -> b) -> MySub a -> MySub b
+subMap func (Tagger tagger) =
+  Tagger (tagger >> func)
+
+
+{-| Subscribe to any location changes. You will only receive updates if the
+user is moving around.
+-}
 changes : (Location -> msg) -> Sub msg
 changes tagger =
   subscription (Tagger tagger)
@@ -221,19 +228,19 @@ changes tagger =
 -- EFFECT MANAGER
 
 
-type alias State =
+type alias State msg =
   Maybe
-    { subs : List (Location -> msg)
+    { subs : List (MySub msg)
     , watcher : Process.Id
     }
 
 
-init : Task Never State
+init : Task Never (State msg)
 init =
   Task.succeed Nothing
 
 
-onEffects : Platform.Router msg Location -> List (MySub msg) -> State -> Task Never State
+onEffects : Platform.Router msg Location -> List (MySub msg) -> State msg -> Task Never (State msg)
 onEffects router subs state =
   case state of
     Nothing ->
@@ -242,8 +249,8 @@ onEffects router subs state =
           Task.succeed state
 
         _ ->
-          watch (Platform.sendToSelf router) (\_ -> Task.succeed ())
-            `andThen` \watcher ->
+          Process.spawn (watch (Platform.sendToSelf router) (\_ -> Task.succeed ()))
+            `Task.andThen` \watcher ->
 
           Task.succeed (Just { subs = subs, watcher = watcher })
 
@@ -251,7 +258,7 @@ onEffects router subs state =
       case subs of
         [] ->
           Process.kill watcher
-            `andThen` \_ ->
+            `Task.andThen` \_ ->
 
           Task.succeed Nothing
 
@@ -259,14 +266,18 @@ onEffects router subs state =
           Task.succeed (Just { subs = subs, watcher = watcher })
 
 
-onSelfMsg : Platform.Router msg Location -> Location -> State -> Task Never State
+onSelfMsg : Platform.Router msg Location -> Location -> State msg -> Task Never (State msg)
 onSelfMsg router location state =
   case state of
     Nothing ->
       Task.succeed Nothing
 
     Just {subs} ->
-      Task.sequence (List.map (\tagger -> Platform.sendToApp router (tagger location)) subs)
-        `andThen` \_ ->
+      let
+        send (Tagger tagger) =
+          Platform.sendToApp router (tagger location)
+      in
+        Task.sequence (List.map send subs)
+          `Task.andThen` \_ ->
 
-      Task.succeed state
+        Task.succeed state
