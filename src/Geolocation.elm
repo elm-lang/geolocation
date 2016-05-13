@@ -94,7 +94,7 @@ type Movement
 
     * The user may reject the request to use their location.
     * It may be impossible to get a location.
-    * If you set a timeout in the `Options` the request may just take to long.
+    * If you set a timeout in the `Options` the request may just take too long.
 
 In each case, the browser will provide a string with additional information.
 -}
