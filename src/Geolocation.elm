@@ -3,6 +3,7 @@ effect module Geolocation where { subscription = MySub } exposing
   , Altitude
   , Movement(..)
   , changes
+  , greatCircleDistance
   , now, nowWith
   , watch, watchWith
   , Options, defaultOptions
@@ -14,7 +15,7 @@ effect module Geolocation where { subscription = MySub } exposing
 [geo]: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation
 
 # Location
-@docs Location, Altitude, Movement
+@docs Location, Altitude, Movement, greatCircleDistance
 
 # Subscribe to Changes
 @docs changes
@@ -84,6 +85,35 @@ north, 90° is east, 180° is south, 270° is west, etc.
 type Movement
     = Static
     | Moving { speed : Float, degreesFromNorth : Float }
+
+
+{-| Calculates the great-circle distance in meters between two points
+on the surface of a perfectly-spherical earth. Altitude and accuracy
+of the coordinates are not taken into consideration.
+-}
+greatCircleDistance : Location -> Location -> Float
+greatCircleDistance a b =
+  let
+    aLat =
+      cos <| degrees a.latitude
+
+    bLat =
+      cos <| degrees b.latitude
+
+    dLat =
+      sin <| (degrees (b.latitude - a.latitude)) / 2
+
+    dLng =
+      sin <| (degrees (b.longitude - a.longitude)) / 2
+
+    x =
+      (dLat * dLat) + (aLat * bLat * dLng * dLng)
+
+    -- radius of the earth in meters
+    radius =
+      6371 * 1000
+  in
+    radius * 2 * (atan2 (sqrt x) (sqrt (1 - x)))
 
 
 
