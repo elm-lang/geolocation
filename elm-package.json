@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "summary": "Geolocation, find your latitude and longitude.",
     "repository": "http://github.com/elm-lang/geolocation.git",
     "license": "BSD3",
