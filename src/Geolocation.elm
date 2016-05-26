@@ -254,7 +254,7 @@ onEffects router subs state =
 
           Task.succeed (Just { subs = subs, watcher = watcher })
 
-    Just {subs,watcher} ->
+    Just {watcher} ->
       case subs of
         [] ->
           Process.kill watcher
