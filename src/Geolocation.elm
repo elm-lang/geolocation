@@ -144,9 +144,7 @@ do something like this:
 
     killWatch =
       Process.spawn (watch onMove onError)
-        `Task.andThen` \watchProcess ->
-
-      Process.kill watchProcess
+        |> Task.andThen Process.kill
 
 -}
 watch : (Location -> Task Never ()) -> (Error -> Task Never ()) -> Task x Never
@@ -250,17 +248,13 @@ onEffects router subs state =
 
         _ ->
           Process.spawn (watch (Platform.sendToSelf router) (\_ -> Task.succeed ()))
-            `Task.andThen` \watcher ->
-
-          Task.succeed (Just { subs = subs, watcher = watcher })
+            |> Task.andThen (\watcher -> Task.succeed (Just { subs = subs, watcher = watcher }))
 
     Just {watcher} ->
       case subs of
         [] ->
           Process.kill watcher
-            `Task.andThen` \_ ->
-
-          Task.succeed Nothing
+            |> Task.andThen (\_ -> Task.succeed Nothing)
 
         _ ->
           Task.succeed (Just { subs = subs, watcher = watcher })
@@ -278,6 +272,4 @@ onSelfMsg router location state =
           Platform.sendToApp router (tagger location)
       in
         Task.sequence (List.map send subs)
-          `Task.andThen` \_ ->
-
-        Task.succeed state
+          |> Task.andThen (\_ -> Task.succeed state)
