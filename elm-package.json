@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "summary": "Geolocation, find your latitude and longitude.",
     "repository": "http://github.com/elm-lang/geolocation.git",
     "license": "BSD3",
@@ -11,7 +11,7 @@
     ],
     "native-modules": true,
     "dependencies": {
-        "elm-lang/core": "4.0.0 <= v < 5.0.0"
+        "elm-lang/core": "5.0.0 <= v < 6.0.0"
     },
-    "elm-version": "0.17.0 <= v < 0.18.0"
+    "elm-version": "0.18.0 <= v < 0.19.0"
 }
