@@ -57,7 +57,7 @@ function fromOptions(options)
 {
 	return {
 		enableHighAccuracy: options.enableHighAccuracy,
-		timeout: options.timeout._0 || Infinity,
+		timeout: options.timeout._0,
 		maximumAge: options.maximumAge._0 || 0
 	};
 }
