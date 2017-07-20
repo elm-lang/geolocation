@@ -61,7 +61,7 @@ function _Geolocation_fromOptions(options)
 {
 	return {
 		enableHighAccuracy: options.__$enableHighAccuracy,
-		timeout: options.__$timeout.a || Infinity,
+		timeout: options.__$timeout.a,
 		maximumAge: options.__$maximumAge.a || 0
 	};
 }
