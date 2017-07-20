@@ -35,7 +35,7 @@ There are very few excuses to use this. Any normal user should be using
 -}
 
 
-import Native.Geolocation
+import Elm.Kernel.Geolocation
 import Process
 import Task exposing (Task)
 import Time exposing (Time)
@@ -123,7 +123,7 @@ now =
 -}
 nowWith : Options -> Task Error Location
 nowWith =
-  Native.Geolocation.now
+  Elm.Kernel.Geolocation.now
 
 
 
@@ -156,7 +156,7 @@ watch =
 -}
 watchWith : Options -> (Location -> Task Never ()) -> (Error -> Task Never ()) -> Task x Never
 watchWith =
-  Native.Geolocation.watch
+  Elm.Kernel.Geolocation.watch
 
 
 
