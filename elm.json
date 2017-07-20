@@ -3,7 +3,7 @@
     "name": "elm-lang/geolocation",
     "summary": "Geolocation, find your latitude and longitude.",
     "license": "BSD-3-Clause",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "exposed-modules": [
         "Geolocation"
     ],
