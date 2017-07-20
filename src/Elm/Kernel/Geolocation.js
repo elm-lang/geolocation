@@ -89,7 +89,7 @@ function _Geolocation_now(options)
 
 function _Geolocation_watch(options, toSuccessTask, toErrorTask)
 {
-	return __Scheduler_nativeBinding(function(callback)
+	return __Scheduler_binding(function(callback)
 	{
 		function onSuccess(rawPosition)
 		{
