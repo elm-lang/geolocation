@@ -1,0 +1,16 @@
+{
+    "type": "package",
+    "name": "elm-lang/geolocation",
+    "summary": "Geolocation, find your latitude and longitude.",
+    "license": "BSD-3-Clause",
+    "version": "1.0.2",
+    "exposed-modules": [
+        "Geolocation"
+    ],
+    "elm-version": "0.19.0 <= v < 0.20.0",
+    "dependencies": {
+        "elm-lang/core": "6.0.0 <= v < 7.0.0"
+    },
+    "test-dependencies": {},
+    "effect-modules": true
+}
