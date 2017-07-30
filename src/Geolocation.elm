@@ -134,7 +134,7 @@ nowWith =
 It is really only useful if you need to make an effect manager of your own.
 I feel this will include about 5 people ever.
 
-You provide two functions. One two take some action on movement and one to
+You provide two functions. One to take some action on movement and one to
 take some action on failure. The resulting task will just block forever,
 reporting to these two functions. If you would like to kill a `watch` task,
 do something like this:
